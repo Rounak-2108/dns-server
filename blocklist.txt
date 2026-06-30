@@ -1,0 +1,4 @@
+ads.google.com
+doubleclick.net
+tracker.example.com
+facebook-tracker.com
