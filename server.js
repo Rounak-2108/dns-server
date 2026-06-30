@@ -1,3 +1,4 @@
+const config = require("./config/config");
 const fs = require("fs");
 const dgram = require("dgram");
 const express = require("express");
@@ -10,7 +11,7 @@ const startDashboard = require("./dashboard");
 
 const blockedDomains = new Set();
 
-const blocklist = fs.readFileSync("blocklist.txt", "utf-8");
+const blocklist = fs.readFileSync(config.BLOCKLIST_FILE, "utf-8");
 
 const domains = blocklist.split("\n");
 
@@ -137,7 +138,7 @@ function getTTL(response) {
 
 function createBlockedResponse(request) {
 
-    return createDnsResponse(request, "0.0.0.0");
+    return createDnsResponse(request, config.DEFAULT_BLOCK_IP);
 }
 
 // ==============================
@@ -189,7 +190,7 @@ function createDnsResponse(request, ip) {
     offset += 2;
 
     // TTL
-    response.writeUInt32BE(60, offset);
+    response.writeUInt32BE(config.DEFAULT_TTL, offset);
     offset += 4;
 
     // RDLENGTH
@@ -281,8 +282,8 @@ server.on("message", (msg, rinfo) => {
 
     client.send(
         msg,
-        53,
-        "8.8.8.8"
+        config.GOOGLE_DNS_PORT,
+        config.GOOGLE_DNS_IP
     );
 
     client.on("message", (response) => {
@@ -332,7 +333,7 @@ server.on("message", (msg, rinfo) => {
 // START SERVER
 // ==============================
 
-server.bind(53, () => {
+server.bind(config.PORT, () => {
 
     addLog("DNS Server running on port 53");
 });
@@ -357,7 +358,7 @@ setInterval(() => {
         }
     }
 
-}, 10000);
+}, config.CACHE_CLEANUP_INTERVAL);
 
 // ==============================
 // DASHBOARD STATS
@@ -381,7 +382,7 @@ setInterval(() => {
 
     console.log("================================\n");
 
-}, 15000);
+}, config.STATS_INTERVAL);
 
 // ==============================
 // START DASHBOARD

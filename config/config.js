@@ -1,0 +1,10 @@
+module.exports = {
+    PORT: 53,
+    GOOGLE_DNS_IP: "8.8.8.8",
+    GOOGLE_DNS_PORT: 53,
+    DEFAULT_BLOCK_IP: "0.0.0.0",
+    DEFAULT_TTL: 60,
+    CACHE_CLEANUP_INTERVAL: 10000,
+    STATS_INTERVAL: 15000,
+    BLOCKLIST_FILE: "blocklist.txt"
+};
