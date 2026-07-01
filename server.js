@@ -1,3 +1,4 @@
+const logger = require("./logger/logger");
 const config = require("./config/config");
 const fs = require("fs");
 const dgram = require("dgram");
@@ -51,24 +52,7 @@ const stats = {
     expiredCacheRemoved: 0
 };
 
-// ==============================
-// LOGS
-// ==============================
 
-const logs = [];
-
-function addLog(message) {
-
-    const time = new Date().toLocaleTimeString();
-
-    logs.unshift(`[${time}] ${message}`);
-
-    if (logs.length > 50) {
-        logs.pop();
-    }
-
-    console.log(message);
-}
 
 // ==============================
 // PARSE DOMAIN
@@ -217,7 +201,7 @@ server.on("message", (msg, rinfo) => {
 
     const domainInfo = parseDomain(msg, 12);
 
-    addLog(`Requested Domain: ${domainInfo.domain}`);
+    logger.log(`Requested Domain: ${domainInfo.domain}`);
 
     // ==========================
     // BLOCKED DOMAIN
@@ -227,7 +211,7 @@ server.on("message", (msg, rinfo) => {
 
         stats.blockedRequests++;
 
-        addLog(`BLOCKED DOMAIN: ${domainInfo.domain}`);
+        logger.log(`BLOCKED DOMAIN: ${domainInfo.domain}`);
 
         const blockedResponse = createBlockedResponse(msg);
 
@@ -250,7 +234,7 @@ server.on("message", (msg, rinfo) => {
 
         stats.cacheHits++;
 
-        addLog("Cache HIT");
+        logger.log("Cache HIT");
 
         const cachedResponse = createDnsResponse(
             msg,
@@ -272,11 +256,11 @@ server.on("message", (msg, rinfo) => {
 
     stats.cacheMisses++;
 
-    addLog("Cache MISS");
+    logger.log("Cache MISS");
 
     stats.forwardedRequests++;
 
-    addLog("Forwarding request to Google DNS");
+    logger.log("Forwarding request to Google DNS");
 
     const client = dgram.createSocket("udp4");
 
@@ -288,11 +272,11 @@ server.on("message", (msg, rinfo) => {
 
     client.on("message", (response) => {
 
-        addLog("Received response from Google DNS");
+        logger.log("Received response from Google DNS");
 
         const ttl = getTTL(response);
 
-        addLog(`TTL: ${ttl}`);
+        logger.log(`TTL: ${ttl}`);
 
         // ======================
         // EXTRACT IP
@@ -314,7 +298,7 @@ server.on("message", (msg, rinfo) => {
             expiresAt: Date.now() + (ttl * 1000)
         };
 
-        addLog("Saved to cache");
+        logger.log("Saved to cache");
 
         // Send original response
         server.send(
@@ -323,7 +307,7 @@ server.on("message", (msg, rinfo) => {
             rinfo.address
         );
 
-        addLog("Response sent to client");
+        logger.log("Response sent to client");
 
         client.close();
     });
@@ -335,7 +319,7 @@ server.on("message", (msg, rinfo) => {
 
 server.bind(config.PORT, () => {
 
-    addLog("DNS Server running on port 53");
+    logger.log("DNS Server running on port 53");
 });
 
 // ==============================
@@ -344,7 +328,7 @@ server.bind(config.PORT, () => {
 
 setInterval(() => {
 
-    addLog("Checking cache for expired entries...");
+    logger.log("Checking cache for expired entries...");
 
     for (const domain in cache) {
 
@@ -352,7 +336,7 @@ setInterval(() => {
 
             stats.expiredCacheRemoved++;
 
-            addLog(`Removing expired cache: ${domain}`);
+            logger.log(`Removing expired cache: ${domain}`);
 
             delete cache[domain];
         }
@@ -388,4 +372,4 @@ setInterval(() => {
 // START DASHBOARD
 // ==============================
 
-startDashboard(stats, logs);
+startDashboard(stats, logger.getLogs());
