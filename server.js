@@ -1,3 +1,4 @@
+const dnsParser = require("./parser/dnsParser");
 const logger = require("./logger/logger");
 const config = require("./config/config");
 const fs = require("fs");
@@ -53,69 +54,6 @@ const stats = {
 };
 
 
-
-// ==============================
-// PARSE DOMAIN
-// ==============================
-
-function parseDomain(msg, offset) {
-
-    let domain = "";
-    let i = offset;
-
-    while (msg[i] !== 0) {
-
-        const length = msg[i];
-
-        i++;
-
-        domain += msg.toString("ascii", i, i + length);
-
-        i += length;
-
-        if (msg[i] !== 0) {
-            domain += ".";
-        }
-    }
-
-    return {
-        domain,
-        offset: i
-    };
-}
-
-// ==============================
-// GET TTL
-// ==============================
-
-function getTTL(response) {
-
-    try {
-
-        let offset = 12;
-
-        // skip question section
-        while (response[offset] !== 0) {
-            offset += response[offset] + 1;
-        }
-
-        offset += 5;
-
-        // answer name
-        offset += 2;
-
-        // type + class
-        offset += 4;
-
-        // TTL
-        return response.readUInt32BE(offset);
-
-    } catch (err) {
-
-        return 60;
-    }
-}
-
 // ==============================
 // CREATE BLOCKED RESPONSE
 // ==============================
@@ -152,7 +90,7 @@ function createDnsResponse(request, ip) {
     response.writeUInt16BE(0, 10);
 
     // Parse domain
-    const domainInfo = parseDomain(request, 12);
+    const domainInfo = dnsParser.parseDomain(request, 12);
 
     const questionEnd = domainInfo.offset + 5;
 
@@ -199,7 +137,7 @@ server.on("message", (msg, rinfo) => {
 
     stats.totalRequests++;
 
-    const domainInfo = parseDomain(msg, 12);
+    const domainInfo = dnsParser.parseDomain(msg, 12);
 
     logger.log(`Requested Domain: ${domainInfo.domain}`);
 
@@ -274,7 +212,7 @@ server.on("message", (msg, rinfo) => {
 
         logger.log("Received response from Google DNS");
 
-        const ttl = getTTL(response);
+        const ttl = dnsParser.getTTL(response);
 
         logger.log(`TTL: ${ttl}`);
 
