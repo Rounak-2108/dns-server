@@ -1,58 +1,21 @@
+const dnsForwarder = require("./forwarding/dnsForwarder");
+const cacheManager = require("./cache/cacheManager");
+const blocklist = require("./security/blocklist");
+const stats = require("./stats/statsManager");
 const dnsParser = require("./parser/dnsParser");
 const logger = require("./logger/logger");
 const config = require("./config/config");
 const fs = require("fs");
 const dgram = require("dgram");
 const express = require("express");
-
 const startDashboard = require("./dashboard");
 
-// ==============================
-// LOAD BLOCKLIST
-// ==============================
-
-const blockedDomains = new Set();
-
-const blocklist = fs.readFileSync(config.BLOCKLIST_FILE, "utf-8");
-
-const domains = blocklist.split("\n");
-
-for (const domain of domains) {
-
-    const cleanDomain = domain.trim();
-
-    if (cleanDomain.length > 0) {
-        blockedDomains.add(cleanDomain);
-    }
-}
-
-console.log("Loaded blocked domains:", blockedDomains.size);
 
 // ==============================
 // DNS SERVER
 // ==============================
 
 const server = dgram.createSocket("udp4");
-
-// ==============================
-// CACHE
-// ==============================
-
-const cache = {};
-
-// ==============================
-// STATS
-// ==============================
-
-const stats = {
-    totalRequests: 0,
-    cacheHits: 0,
-    cacheMisses: 0,
-    blockedRequests: 0,
-    forwardedRequests: 0,
-    expiredCacheRemoved: 0
-};
-
 
 // ==============================
 // CREATE BLOCKED RESPONSE
@@ -133,7 +96,7 @@ function createDnsResponse(request, ip) {
 // HANDLE REQUESTS
 // ==============================
 
-server.on("message", (msg, rinfo) => {
+server.on("message", async (msg, rinfo) => {
 
     stats.totalRequests++;
 
@@ -145,7 +108,7 @@ server.on("message", (msg, rinfo) => {
     // BLOCKED DOMAIN
     // ==========================
 
-    if (blockedDomains.has(domainInfo.domain)) {
+    if (blocklist.isBlocked(domainInfo.domain)) {
 
         stats.blockedRequests++;
 
@@ -166,7 +129,7 @@ server.on("message", (msg, rinfo) => {
     // CACHE HIT
     // ==========================
 
-    const cachedEntry = cache[domainInfo.domain];
+    const cachedEntry = cacheManager.get(domainInfo.domain);
 
     if (cachedEntry && cachedEntry.expiresAt > Date.now()) {
 
@@ -200,55 +163,41 @@ server.on("message", (msg, rinfo) => {
 
     logger.log("Forwarding request to Google DNS");
 
-    const client = dgram.createSocket("udp4");
+    try{
 
-    client.send(
-        msg,
-        config.GOOGLE_DNS_PORT,
-        config.GOOGLE_DNS_IP
-    );
-
-    client.on("message", (response) => {
+        const response = await dnsForwarder.forward(msg);
 
         logger.log("Received response from Google DNS");
 
-        const ttl = dnsParser.getTTL(response);
+        const answers = dnsParser.parseAnswers(response);
 
-        logger.log(`TTL: ${ttl}`);
+        const aRecord = answers.find(answer => answer.type === "A");
 
-        // ======================
-        // EXTRACT IP
-        // ======================
+        if(aRecord){
+            
+            cacheManager.set(
+                domainInfo.domain,
+                aRecord.data,
+                aRecord.ttl
+            );
+            
+            logger.log("Saved to cache");
 
-        const ip = [
-            response[response.length - 4],
-            response[response.length - 3],
-            response[response.length - 2],
-            response[response.length - 1]
-        ].join(".");
+        }
 
-        // ======================
-        // SAVE CACHE
-        // ======================
-
-        cache[domainInfo.domain] = {
-            ip,
-            expiresAt: Date.now() + (ttl * 1000)
-        };
-
-        logger.log("Saved to cache");
-
-        // Send original response
         server.send(
             response,
             rinfo.port,
             rinfo.address
         );
-
+        
         logger.log("Response sent to client");
+    }
+    catch (err) {
 
-        client.close();
-    });
+        logger.log(`Forwarding failed: ${err.message}`);
+
+    }
 });
 
 // ==============================
@@ -259,28 +208,6 @@ server.bind(config.PORT, () => {
 
     logger.log("DNS Server running on port 53");
 });
-
-// ==============================
-// CACHE CLEANUP
-// ==============================
-
-setInterval(() => {
-
-    logger.log("Checking cache for expired entries...");
-
-    for (const domain in cache) {
-
-        if (cache[domain].expiresAt < Date.now()) {
-
-            stats.expiredCacheRemoved++;
-
-            logger.log(`Removing expired cache: ${domain}`);
-
-            delete cache[domain];
-        }
-    }
-
-}, config.CACHE_CLEANUP_INTERVAL);
 
 // ==============================
 // DASHBOARD STATS
@@ -305,6 +232,8 @@ setInterval(() => {
     console.log("================================\n");
 
 }, config.STATS_INTERVAL);
+
+cacheManager.startCleanup(logger, stats);
 
 // ==============================
 // START DASHBOARD
