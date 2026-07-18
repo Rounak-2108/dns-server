@@ -161,13 +161,13 @@ server.on("message", async (msg, rinfo) => {
 
     stats.forwardedRequests++;
 
-    logger.log("Forwarding request to Google DNS");
+    logger.log(`Forwarding request to ${dnsServer.name}`);
 
     try{
 
         const response = await dnsForwarder.forward(msg);
 
-        logger.log("Received response from Google DNS");
+        logger.log(`${dnsServer.name} responded successfully.`);
 
         const answers = dnsParser.parseAnswers(response);
 
