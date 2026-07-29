@@ -4,7 +4,9 @@ const config = require("../config/config");
 // CACHE MANAGER
 // ==============================
 
-const cache = {};
+const LRUCache = require("./LRUCache");
+
+const cache = new LRUCache(config.CACHE_CAPACITY);
 
 // ------------------------------
 // Get cache entry
@@ -12,11 +14,7 @@ const cache = {};
 
 function get(domain) {
 
-    console.log("CACHE CONTENT:");
-
-    console.log(cache);
-
-    return cache[domain];
+    return cache.get(domain);
 
 }
 
@@ -26,16 +24,11 @@ function get(domain) {
 
 function set(domain, ip, ttl) {
 
-    cache[domain] = {
-
+    cache.put(
+        domain,
         ip,
-
-        expiresAt: Date.now() + (ttl * 1000)
-
-    };
-    console.log("CACHE SAVED:");
-
-    console.log(cache);
+        Date.now() + (ttl * 1000)
+    );
 
 }
 
@@ -45,7 +38,7 @@ function set(domain, ip, ttl) {
 
 function remove(domain) {
 
-    delete cache[domain];
+    cache.remove(domain);
 
 }
 
@@ -57,15 +50,15 @@ function cleanupExpired(logger, stats) {
 
     logger.log("Checking cache for expired entries...");
 
-    for (const domain in cache) {
+    for (const node of cache.getAllNodes()) {
 
-        if (cache[domain].expiresAt < Date.now()) {
+        if (node.expiresAt < Date.now()) {
 
             stats.expiredCacheRemoved++;
 
-            logger.log(`Removing expired cache: ${domain}`);
+            logger.log(`Removing expired cache: ${node.domain}`);
 
-            remove(domain);
+            cache.remove(node.domain);
 
         }
 

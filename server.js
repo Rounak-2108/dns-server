@@ -161,13 +161,13 @@ server.on("message", async (msg, rinfo) => {
 
     stats.forwardedRequests++;
 
-    logger.log(`Forwarding request to ${dnsServer.name}`);
+    logger.log(`Forwarding request ...`);
 
     try{
 
         const response = await dnsForwarder.forward(msg);
 
-        logger.log(`${dnsServer.name} responded successfully.`);
+        logger.log(`Upstream DNS responded successfully.`);
 
         const answers = dnsParser.parseAnswers(response);
 
@@ -206,7 +206,7 @@ server.on("message", async (msg, rinfo) => {
 
 server.bind(config.PORT, () => {
 
-    logger.log("DNS Server running on port 53");
+    logger.log(`DNS Server running on port ${config.PORT}`);
 });
 
 // ==============================
