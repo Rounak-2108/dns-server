@@ -7,19 +7,34 @@ function parseDomain(msg, offset) {
     let domain = "";
     let i = offset;
 
-    while (msg[i] !== 0) {
+    while (i < msg.length && msg[i] !== 0) {
 
         const length = msg[i];
 
+        // DNS label length must be between 1 and 63
+        if (length < 1 || length > 63) {
+            throw new Error("Invalid DNS label length");
+        }
+
         i++;
+
+        // Make sure the complete label exists
+        if (i + length > msg.length) {
+            throw new Error("Invalid DNS packet: label exceeds packet length");
+        }
 
         domain += msg.toString("ascii", i, i + length);
 
         i += length;
 
-        if (msg[i] !== 0) {
+        if (i < msg.length && msg[i] !== 0) {
             domain += ".";
         }
+    }
+
+    // Domain must have a terminating zero byte
+    if (i >= msg.length) {
+        throw new Error("Invalid DNS packet: domain name not terminated");
     }
 
     return {

@@ -100,7 +100,19 @@ server.on("message", async (msg, rinfo) => {
 
     stats.totalRequests++;
 
-    const domainInfo = dnsParser.parseDomain(msg, 12);
+    let domainInfo;
+
+    try{
+
+        domainInfo = dnsParser.parseDomain(msg, 12);
+
+    } catch (err){
+        
+        logger.log(`Invalid DNS packet: ${err.message}`);
+
+        return;
+        
+    }
 
     logger.log(`Requested Domain: ${domainInfo.domain}`);
 
