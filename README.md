@@ -4,6 +4,10 @@ A custom DNS resolver built with **Node.js** that processes DNS queries, forward
 
 The project explores how DNS works internally, including DNS packet structure, record parsing, UDP communication, caching, and TCP fallback.
 
+## Dashboard
+
+![DNS Server Dashboard](screenshots/dashboard.png)
+
 ## Features
 
 - **DNS Resolution** — Resolves DNS queries for A, AAAA, CNAME, and MX records.
