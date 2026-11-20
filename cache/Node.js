@@ -1,9 +1,10 @@
 class Node{
 
-    constructor(domain, ip, expiresAt){
+    constructor(domain, type, data, expiresAt){
 
         this.domain = domain;
-        this.ip = ip;
+        this.type = type;
+        this.data = data;
         this.expiresAt = expiresAt;
 
         this.prev = null;

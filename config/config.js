@@ -25,5 +25,6 @@ module.exports = {
     CACHE_CLEANUP_INTERVAL: 10000,
     STATS_INTERVAL: 15000,
     BLOCKLIST_FILE: "blocklist.txt",
-    DNS_TIMEOUT: 2000
+    DNS_TIMEOUT: 2000,
+    CLIENT_TIMEOUT: 10000
 };

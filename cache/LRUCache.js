@@ -10,15 +10,19 @@ class LRUCache {
 
         this.cache = new Map();
 
-        this.head = new Node(null, null, null);
+        this.head = new Node(null, null, null, null);
 
-        this.tail = new Node(null, null, null);
+        this.tail = new Node(null, null, null, null);
 
         this.head.next = this.tail;
 
         this.tail.prev = this.head;
 
     }
+
+    // ==============================
+    // ADD NODE TO FRONT
+    // ==============================
 
     addToFront(node) {
 
@@ -31,6 +35,10 @@ class LRUCache {
         firstNode.prev = node; //Update exisiting list
 
     }
+
+    // ==============================
+    // REMOVE NODE
+    // ==============================
 
     removeNode(node) {
 
@@ -45,6 +53,10 @@ class LRUCache {
 
     }
 
+    // ==============================
+    // MOVE NODE TO FRONT
+    // ==============================
+
     moveToFront(node) {
 
         this.removeNode(node);
@@ -53,22 +65,31 @@ class LRUCache {
 
     }
 
+    // ==============================
+    // REMOVE LEAST RECENTLY USED
+    // ==============================
+
     removeTail() {
 
         const lru = this.tail.prev;
 
         this.removeNode(lru);
 
-        this.cache.delete(lru.domain);
+        this.cache.delete(`${lru.domain}:${lru.type}`);
 
         this.size--;
 
         return lru;
     }
 
-    get(domain) {
+    // ==============================
+    // GET
+    // ==============================
+
+    get(domain, type) {
         
-        const node = this.cache.get(domain);
+        const key = `${domain}:${type}`;
+        const node = this.cache.get(key);
 
         if(node === undefined) {
             return null;
@@ -78,18 +99,24 @@ class LRUCache {
 
         return {
             domain: node.domain,
-            ip: node.ip,
+            type: node.type,
+            data: node.data,
             expiresAt: node.expiresAt
         };
     }
 
-    put(domain, ip, expiresAt) {
+    // ==============================
+    // PUT
+    // ==============================
 
-        const node = this.cache.get(domain);
+    put(domain, type, data, expiresAt) {
+
+        const key = `${domain}:${type}`;
+        const node = this.cache.get(key);
 
         if(node !== undefined) {
 
-            node.ip = ip;
+            node.data = data;
             node.expiresAt = expiresAt;
 
             this.moveToFront(node);
@@ -97,21 +124,28 @@ class LRUCache {
             return;
         }
         
+        //Cache full
         if(this.size === this.capacity) {
             this.removeTail();
         }
 
-        const newNode = new Node(domain, ip, expiresAt);
+        const newNode = new Node(domain, type, data, expiresAt);
 
         this.addToFront(newNode);
 
-        this.cache.set(domain, newNode);
+        this.cache.set(key, newNode);
 
         this.size++;
     }
-    remove(domain) {
 
-        const node = this.cache.get(domain);
+    // ==============================
+    // REMOVE
+    // ==============================
+
+    remove(domain, type) {
+
+        const key = `${domain}:${type}`;
+        const node = this.cache.get(key);
 
         if(node === undefined) {
             return;
@@ -119,11 +153,15 @@ class LRUCache {
 
         this.removeNode(node);
 
-        this.cache.delete(domain);
+        this.cache.delete(key);
 
         this.size--;
 
     }
+
+    // ==============================
+    // GET ALL NODES
+    // ==============================
 
     getAllNodes() {
 

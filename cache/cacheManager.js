@@ -12,9 +12,9 @@ const cache = new LRUCache(config.CACHE_CAPACITY);
 // Get cache entry
 // ------------------------------
 
-function get(domain) {
+function get(domain, type) {
 
-    return cache.get(domain);
+    return cache.get(domain, type);
 
 }
 
@@ -22,11 +22,12 @@ function get(domain) {
 // Save cache entry
 // ------------------------------
 
-function set(domain, ip, ttl) {
+function set(domain, type, data, ttl) {
 
     cache.put(
         domain,
-        ip,
+        type,
+        data,
         Date.now() + (ttl * 1000)
     );
 
@@ -36,9 +37,9 @@ function set(domain, ip, ttl) {
 // Remove cache entry
 // ------------------------------
 
-function remove(domain) {
+function remove(domain, type) {
 
-    cache.remove(domain);
+    cache.remove(domain, type);
 
 }
 
@@ -52,13 +53,13 @@ function cleanupExpired(logger, stats) {
 
     for (const node of cache.getAllNodes()) {
 
-        if (node.expiresAt < Date.now()) {
+        if (node.expiresAt <= Date.now()) {
 
             stats.expiredCacheRemoved++;
 
-            logger.log(`Removing expired cache: ${node.domain}`);
+            logger.log(`Removing expired cache: ${node.domain}:${node.type}`);
 
-            cache.remove(node.domain);
+            cache.remove(node.domain, node.type);
 
         }
 
